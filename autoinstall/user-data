@@ -18,6 +18,13 @@ autoinstall:
 
 
   ssh:
+    network:
+      version: 2
+      ethernets:
+        all-en:
+          match: {name: "en*"}
+          dhcp4: true
+          optional: true
     install-server: true
     allow-pw: false
     authorized-keys:
