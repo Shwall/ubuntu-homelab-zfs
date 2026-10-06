@@ -1,0 +1,76 @@
+---
+- name: Resolve MQTT password
+  no_log: true
+  block:
+    - name: Generate MQTT password once
+      ansible.builtin.shell: "umask 077; openssl rand -base64 24 | tr -d '/+=\\n' > /etc/homelab/mqtt_password"
+      args:
+        creates: /etc/homelab/mqtt_password
+      when: homelab_mqtt_password | length == 0
+
+    - name: Read generated password
+      ansible.builtin.slurp:
+        src: /etc/homelab/mqtt_password
+      register: _mqtt_pw_file
+      when: homelab_mqtt_password | length == 0
+
+    - name: Set effective MQTT password
+      ansible.builtin.set_fact:
+        _mqtt_password: "{{ homelab_mqtt_password if homelab_mqtt_password | length > 0 else (_mqtt_pw_file.content | b64decode | trim) }}"
+
+- name: Mosquitto directories (uid 1883 in the container)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "1883"
+    group: "1883"
+    mode: "0750"
+  loop:
+    - "{{ homelab_root }}/mosquitto/config"
+    - "{{ homelab_root }}/mosquitto/data"
+
+- name: Mosquitto config
+  ansible.builtin.copy:
+    dest: "{{ homelab_root }}/mosquitto/config/mosquitto.conf"
+    owner: "1883"
+    group: "1883"
+    mode: "0640"
+    content: |
+      persistence true
+      persistence_location /mosquitto/data/
+      listener 1883
+      allow_anonymous false
+      password_file /mosquitto/config/passwd
+
+- name: Seed plaintext password file (only if absent)
+  ansible.builtin.copy:
+    dest: "{{ homelab_root }}/mosquitto/config/passwd"
+    content: "{{ mosquitto_user }}:{{ _mqtt_password }}\n"
+    owner: "1883"
+    group: "1883"
+    mode: "0600"
+    force: false
+  register: _mosq_passwd
+  no_log: true
+
+- name: Hash password file in place
+  ansible.builtin.command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - --user
+      - "1883:1883"
+      - -v
+      - "{{ homelab_root }}/mosquitto/config:/mosquitto/config"
+      - "{{ mosquitto_image }}"
+      - mosquitto_passwd
+      - -U
+      - /mosquitto/config/passwd
+  when: _mosq_passwd is changed
+  changed_when: true
+
+- name: Deploy Mosquitto stack
+  ansible.builtin.include_tasks: _stack.yml
+  vars:
+    stack_name: mosquitto

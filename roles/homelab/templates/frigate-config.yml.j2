@@ -1,0 +1,52 @@
+# Seeded by Ansible (only written if absent unless frigate_config_overwrite: true).
+# Frigate docs: https://docs.frigate.video/configuration/
+mqtt:
+  enabled: {{ mosquitto_enabled | bool | lower }}
+  host: mosquitto
+  user: "{FRIGATE_MQTT_USER}"
+  password: "{FRIGATE_MQTT_PASSWORD}"
+
+{% if frigate_detector == 'openvino' %}
+detectors:
+  ov:
+    type: openvino
+    device: GPU
+
+model:
+  width: 300
+  height: 300
+  input_tensor: nhwc
+  input_pixel_format: bgr
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  labelmap_path: /openvino-model/coco_91cl_bkgr.txt
+{% elif frigate_detector == 'edgetpu' %}
+detectors:
+  coral:
+    type: edgetpu
+    device: usb
+{% else %}
+detectors:
+  cpu1:
+    type: cpu
+{% endif %}
+
+{% if homelab_gpu == 'intel' %}
+ffmpeg:
+  hwaccel_args: preset-vaapi
+
+{% endif %}
+record:
+  enabled: true
+
+cameras:
+{% for cam in frigate_cameras %}
+  {{ cam.name }}:
+    ffmpeg:
+      inputs:
+        - path: "{{ cam.url }}"
+          roles:
+            - detect
+            - record
+    detect:
+      enabled: true
+{% endfor %}

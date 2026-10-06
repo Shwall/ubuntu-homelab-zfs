@@ -1,0 +1,7 @@
+---
+# Push mode:  ansible-playbook -i inventory/hosts.yml site.yml
+- name: Configure homelab server (ZFS + Docker + Frigate + Home Assistant + Nextcloud AIO)
+  hosts: homelab
+  become: true
+  roles:
+    - homelab

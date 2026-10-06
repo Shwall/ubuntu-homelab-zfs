@@ -1,0 +1,14 @@
+---
+# Non-secret overrides. See roles/homelab/defaults/main.yml for every option.
+# Put secrets in /etc/homelab/secrets.yml on the host (never in git) or in ansible-vault.
+
+homelab_timezone: Etc/UTC
+homelab_gpu: intel            # intel | none
+homelab_zfs_arc_max_gb: 4     # 0 = leave OpenZFS default (50% of RAM)
+
+frigate_detector: openvino    # openvino | edgetpu | cpu
+frigate_cameras:
+  - name: example_cam
+    url: "rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.50:554/stream1"
+
+# nextcloud_behind_proxy: true   # AIO listens on :11000 for your reverse proxy

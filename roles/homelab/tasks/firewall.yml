@@ -1,0 +1,18 @@
+---
+- name: Allow service ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    from_ip: "{{ homelab_lan_cidr }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ homelab_firewall_rules }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto }} {{ item.comment }}"
+  when: item.enabled | bool
+
+- name: Default deny incoming, enable ufw
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming

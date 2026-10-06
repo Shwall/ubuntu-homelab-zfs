@@ -1,0 +1,109 @@
+#cloud-config
+# Ubuntu Server 26.04 autoinstall: ZFS-on-root, SSH-key only, then first-boot Ansible bootstrap.
+#
+# BEFORE USE, replace every REPLACE_ME / YOUR_USER.
+# WARNING: this wipes the disk matched under storage.layout.match.
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  timezone: Etc/UTC
+
+  identity:
+    hostname: homelab
+    username: ansible
+    # mkpasswd -m sha-512   (package: whois)
+    password: "$6$REPLACE_ME"
+
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - ssh-ed25519 AAAAREPLACE_ME you@laptop
+
+  # DHCP on all NICs is the default. For a static address use netplan syntax:
+  # network:
+  #   version: 2
+  #   ethernets:
+  #     enp1s0:
+  #       addresses: [192.168.1.10/24]
+  #       routes: [{to: default, via: 192.168.1.1}]
+  #       nameservers: {addresses: [192.168.1.1]}
+
+  # ---- ZFS root (single disk: bpool + rpool created by Subiquity) -------------
+  # The match is deliberately a placeholder so a wrong guess fails instead of
+  # wiping the wrong disk. Find your disk with:  lsblk -o NAME,SIZE,MODEL,SERIAL
+  storage:
+    layout:
+      name: zfs
+      match:
+        serial: "REPLACE_ME*"      # or: path: /dev/nvme0n1  |  size: smallest
+  # Mirrored boot pool / custom vdevs are not offered by `layout`; use a full
+  # custom `storage: config:` (zpool/zfs actions) if you need that.
+
+  packages:
+    - git
+    - ansible-core
+    - python3-apt
+    - smartmontools
+
+  updates: security
+
+  late-commands:
+    - echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/90-ansible
+    - chmod 440 /target/etc/sudoers.d/90-ansible
+
+  shutdown: reboot
+
+  # cloud-init config for the *installed* system (runs on first boot)
+  user-data:
+    write_files:
+      # Optional secrets, kept off GitHub. Delete if unused.
+      - path: /etc/homelab/secrets.yml
+        permissions: "0600"
+        content: |
+          ---
+          frigate_rtsp_password: "REPLACE_ME"
+          # homelab_mqtt_password: "optional, otherwise auto-generated"
+
+      - path: /usr/local/sbin/homelab-bootstrap
+        permissions: "0755"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          REPO_URL="https://github.com/YOUR_USER/ubuntu-homelab-zfs.git"
+          BRANCH="main"
+          DIR=/var/lib/homelab/repo
+          mkdir -p /var/lib/homelab
+          if [ -d "$DIR/.git" ]; then
+            git -C "$DIR" pull --ff-only
+          else
+            git clone --branch "$BRANCH" "$REPO_URL" "$DIR"
+          fi
+          cd "$DIR"
+          ansible-galaxy collection install -r requirements.yml -p /usr/share/ansible/collections
+          ansible-playbook -i localhost, -c local local.yml
+          touch /var/lib/homelab/bootstrap.done
+
+      - path: /etc/systemd/system/homelab-bootstrap.service
+        content: |
+          [Unit]
+          Description=First-boot Ansible configuration (homelab)
+          Wants=network-online.target
+          After=network-online.target
+          ConditionPathExists=!/var/lib/homelab/bootstrap.done
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/sbin/homelab-bootstrap
+          TimeoutStartSec=infinity
+          StandardOutput=append:/var/log/homelab-bootstrap.log
+          StandardError=append:/var/log/homelab-bootstrap.log
+
+          [Install]
+          WantedBy=multi-user.target
+    runcmd:
+      - systemctl daemon-reload
+      - systemctl enable homelab-bootstrap.service
+      - systemctl start --no-block homelab-bootstrap.service

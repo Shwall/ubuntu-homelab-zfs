@@ -1,0 +1,17 @@
+# Managed by Ansible
+services:
+  mosquitto:
+    container_name: mosquitto
+    image: {{ mosquitto_image }}
+    restart: unless-stopped
+    user: "1883:1883"
+    ports:
+      - "1883:1883"
+    volumes:
+      - {{ homelab_root }}/mosquitto/config:/mosquitto/config
+      - {{ homelab_root }}/mosquitto/data:/mosquitto/data
+
+networks:
+  default:
+    name: {{ homelab_docker_network }}
+    external: true

@@ -1,0 +1,9 @@
+---
+# Local/pull mode (used by the first-boot bootstrap service):
+#   ansible-playbook -i localhost, -c local local.yml
+- name: Configure this host
+  hosts: localhost
+  connection: local
+  become: true
+  roles:
+    - homelab

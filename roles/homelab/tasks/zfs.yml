@@ -1,0 +1,59 @@
+---
+- name: Create optional data pool
+  when: homelab_data_pool.create | bool
+  block:
+    - name: Assert devices were provided
+      ansible.builtin.assert:
+        that: homelab_data_pool.devices | length > 0
+        fail_msg: homelab_data_pool.devices must list /dev/disk/by-id paths.
+
+    - name: Check whether pool exists
+      ansible.builtin.command: "zpool list -H -o name {{ homelab_data_pool.name }}"
+      register: _pool_exists
+      changed_when: false
+      failed_when: false
+
+    - name: Create pool
+      ansible.builtin.command:
+        argv: >-
+          {{ ['zpool', 'create',
+              '-o', 'ashift=' ~ homelab_data_pool.ashift,
+              '-O', 'compression=lz4', '-O', 'atime=off', '-O', 'acltype=posixacl',
+              '-O', 'xattr=sa', '-O', 'dnodesize=auto', '-O', 'normalization=formD',
+              homelab_data_pool.name]
+             + ([homelab_data_pool.vdev_type] if homelab_data_pool.vdev_type != 'stripe' else [])
+             + homelab_data_pool.devices }}
+      when: _pool_exists.rc != 0
+
+- name: List imported pools
+  ansible.builtin.command: zpool list -H -o name
+  register: _pools
+  changed_when: false
+
+- name: Assert target pool exists
+  ansible.builtin.assert:
+    that: homelab_pool in _pools.stdout_lines
+    fail_msg: "ZFS pool '{{ homelab_pool }}' not found (have: {{ _pools.stdout_lines | join(', ') }})."
+
+- name: Limit ZFS ARC (persistent)
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/zfs-arc.conf
+    content: "options zfs zfs_arc_max={{ (homelab_zfs_arc_max_gb | int) * 1024 * 1024 * 1024 }}\n"
+    mode: "0644"
+  register: _arc
+  when: homelab_zfs_arc_max_gb | int > 0
+  notify: Update initramfs
+
+- name: Apply ARC limit now
+  ansible.builtin.shell: "echo {{ (homelab_zfs_arc_max_gb | int) * 1024 * 1024 * 1024 }} > /sys/module/zfs/parameters/zfs_arc_max"
+  when: _arc is changed
+  changed_when: true
+
+- name: Create datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties: "{{ item.properties | default({}) }}"
+  loop: "{{ homelab_zfs_datasets }}"
+  loop_control:
+    label: "{{ item.name }}"

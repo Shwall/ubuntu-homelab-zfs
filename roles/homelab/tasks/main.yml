@@ -1,0 +1,37 @@
+---
+- name: Check for optional secrets file
+  ansible.builtin.stat:
+    path: "{{ homelab_secrets_file }}"
+  register: _homelab_secrets
+  tags: [always]
+
+- name: Include secrets
+  ansible.builtin.include_vars:
+    file: "{{ homelab_secrets_file }}"
+  when: _homelab_secrets.stat.exists
+  no_log: true
+  tags: [always]
+
+- ansible.builtin.import_tasks: base.yml
+  tags: [base]
+- ansible.builtin.import_tasks: zfs.yml
+  tags: [zfs]
+- ansible.builtin.import_tasks: docker.yml
+  tags: [docker]
+- ansible.builtin.import_tasks: firewall.yml
+  when: homelab_firewall_enabled | bool
+  tags: [firewall]
+- ansible.builtin.import_tasks: mosquitto.yml
+  when: mosquitto_enabled | bool
+  tags: [mosquitto, stacks]
+- ansible.builtin.import_tasks: homeassistant.yml
+  when: homeassistant_enabled | bool
+  tags: [homeassistant, stacks]
+- ansible.builtin.import_tasks: frigate.yml
+  when: frigate_enabled | bool
+  tags: [frigate, stacks]
+- ansible.builtin.import_tasks: nextcloud.yml
+  when: nextcloud_enabled | bool
+  tags: [nextcloud, stacks]
+- ansible.builtin.import_tasks: snapshots.yml
+  tags: [snapshots]

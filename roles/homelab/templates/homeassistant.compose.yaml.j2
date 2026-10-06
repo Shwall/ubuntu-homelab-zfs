@@ -1,0 +1,14 @@
+# Managed by Ansible
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:{{ homeassistant_version }}
+    restart: unless-stopped
+    network_mode: host          # mDNS/SSDP discovery; UI on :8123
+    cap_add: [NET_RAW, NET_ADMIN]
+    environment:
+      TZ: {{ homelab_timezone }}
+    volumes:
+      - {{ homelab_root }}/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro

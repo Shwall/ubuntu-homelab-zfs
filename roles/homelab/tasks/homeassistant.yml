@@ -1,0 +1,11 @@
+---
+- name: Home Assistant config directory
+  ansible.builtin.file:
+    path: "{{ homelab_root }}/homeassistant"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Home Assistant stack
+  ansible.builtin.include_tasks: _stack.yml
+  vars:
+    stack_name: homeassistant

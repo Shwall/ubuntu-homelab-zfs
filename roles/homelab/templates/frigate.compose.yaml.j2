@@ -1,0 +1,39 @@
+# Managed by Ansible
+services:
+  frigate:
+    container_name: frigate
+    image: ghcr.io/blakeblackshear/frigate:{{ frigate_version }}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: "{{ frigate_shm_size }}"
+    env_file: .env
+{% if homelab_gpu == 'intel' or frigate_detector == 'edgetpu' %}
+    devices:
+{% if homelab_gpu == 'intel' %}
+      - /dev/dri/renderD128:/dev/dri/renderD128
+{% endif %}
+{% if frigate_detector == 'edgetpu' %}
+      - /dev/bus/usb:/dev/bus/usb
+{% endif %}
+{% endif %}
+{% if homelab_gpu == 'intel' %}
+    cap_add: [CAP_PERFMON]
+{% endif %}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - {{ homelab_root }}/frigate-config:/config
+      - {{ homelab_root }}/frigate-media:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971"          # authenticated UI (HTTPS)
+      - "8554:8554"          # RTSP restream
+      - "8555:8555/tcp"      # WebRTC
+      - "8555:8555/udp"
+
+networks:
+  default:
+    name: {{ homelab_docker_network }}
+    external: true

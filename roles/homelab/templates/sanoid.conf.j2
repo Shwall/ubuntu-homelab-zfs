@@ -1,0 +1,14 @@
+# Managed by Ansible
+{% for ds in homelab_zfs_datasets if ds.snapshot | default(false) %}
+[{{ ds.name }}]
+  use_template = production
+
+{% endfor %}
+[template_production]
+  frequently = 0
+  hourly = {{ sanoid_template.hourly }}
+  daily = {{ sanoid_template.daily }}
+  monthly = {{ sanoid_template.monthly }}
+  yearly = {{ sanoid_template.yearly }}
+  autosnap = yes
+  autoprune = yes

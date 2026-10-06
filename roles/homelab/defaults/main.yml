@@ -1,0 +1,115 @@
+---
+# ---------------------------------------------------------------- general
+homelab_timezone: Etc/UTC
+homelab_admin_user: ansible           # added to the docker group
+homelab_secrets_file: /etc/homelab/secrets.yml   # optional, loaded if present
+homelab_gpu: intel                    # intel | none
+
+homelab_base_packages:
+  - curl
+  - git
+  - htop
+  - jq
+  - smartmontools
+  - unattended-upgrades
+  - ufw
+  - sanoid
+  - ca-certificates
+homelab_gpu_packages:
+  intel: [intel-media-va-driver, vainfo, intel-gpu-tools]
+  none: []
+
+# -------------------------------------------------------------------- ZFS
+# Pool that holds app data. "rpool" = the pool Subiquity created on the boot disk.
+# Set to your data pool (e.g. tank) if you add one below.
+homelab_pool: rpool
+homelab_root: /srv/homelab            # mountpoint of <pool>/homelab
+
+# OPTIONAL second pool, created ONLY when create: true and it doesn't exist yet.
+# Use /dev/disk/by-id paths. DESTRUCTIVE to the listed disks.
+homelab_data_pool:
+  create: false
+  name: tank
+  ashift: 12
+  vdev_type: mirror                   # mirror | raidz1 | raidz2 | stripe
+  devices: []                         # ["/dev/disk/by-id/ata-...", "/dev/disk/by-id/ata-..."]
+
+homelab_zfs_arc_max_gb: 4             # 0 = leave default
+
+# snapshot: true -> sanoid "production" policy
+homelab_zfs_datasets:
+  - name: "{{ homelab_pool }}/homelab"
+    properties: {mountpoint: "{{ homelab_root }}", compression: lz4, atime: "off", xattr: sa, acltype: posixacl}
+  - name: "{{ homelab_pool }}/docker"
+    properties: {mountpoint: /var/lib/docker, compression: lz4, atime: "off"}
+  - name: "{{ homelab_pool }}/homelab/homeassistant"
+    snapshot: true
+  - name: "{{ homelab_pool }}/homelab/mosquitto"
+    snapshot: true
+  - name: "{{ homelab_pool }}/homelab/frigate-config"
+    snapshot: true
+  - name: "{{ homelab_pool }}/homelab/frigate-media"
+    properties: {recordsize: 1M, compression: "off"}
+  - name: "{{ homelab_pool }}/homelab/nextcloud-data"
+    snapshot: true
+
+sanoid_template:
+  hourly: 24
+  daily: 14
+  monthly: 3
+  yearly: 0
+
+# ----------------------------------------------------------------- Docker
+# Docker's overlay2 driver refuses to run on ZFS, so use the native zfs driver
+# (requires /var/lib/docker to be its own ZFS dataset, which this role creates).
+homelab_docker_storage_driver: zfs
+homelab_docker_network: homelab
+
+# --------------------------------------------------------------- firewall
+homelab_firewall_enabled: true
+homelab_lan_cidr: any                 # e.g. 192.168.1.0/24
+# NOTE: Docker-published ports bypass ufw. Treat this as host-service filtering only.
+
+# ------------------------------------------------------------- Mosquitto
+mosquitto_enabled: true
+mosquitto_image: eclipse-mosquitto:2
+mosquitto_user: frigate_ha
+homelab_mqtt_password: ""             # empty = generate once, store in /etc/homelab/mqtt_password
+
+# ----------------------------------------------------------- Home Assistant
+homeassistant_enabled: true
+homeassistant_version: stable
+
+# ------------------------------------------------------------------ Frigate
+frigate_enabled: true
+frigate_version: stable
+frigate_shm_size: 512mb
+frigate_detector: openvino            # openvino (Intel iGPU) | edgetpu (USB Coral) | cpu
+frigate_rtsp_password: ""
+frigate_config_overwrite: false       # false = never clobber edits made in the Frigate UI
+frigate_cameras:
+  - name: example_cam
+    url: "rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.50:554/stream1"
+
+# ------------------------------------------------------------ Nextcloud AIO
+nextcloud_enabled: true
+nextcloud_image: ghcr.io/nextcloud-releases/all-in-one:latest
+nextcloud_behind_proxy: false         # true -> AIO's Apache listens on :11000 for your reverse proxy
+nextcloud_apache_port: 11000
+nextcloud_upload_limit: 16G
+nextcloud_memory_limit: 1024M
+
+# Ports opened in ufw (each row only applies when `enabled` is true)
+homelab_firewall_rules:
+  - {port: 22,   proto: tcp, enabled: true,  comment: ssh}
+  - {port: 8123, proto: tcp, enabled: "{{ homeassistant_enabled }}", comment: home-assistant}
+  - {port: 8971, proto: tcp, enabled: "{{ frigate_enabled }}", comment: frigate-ui}
+  - {port: 8554, proto: tcp, enabled: "{{ frigate_enabled }}", comment: frigate-rtsp}
+  - {port: 8555, proto: tcp, enabled: "{{ frigate_enabled }}", comment: frigate-webrtc}
+  - {port: 8555, proto: udp, enabled: "{{ frigate_enabled }}", comment: frigate-webrtc}
+  - {port: 8080, proto: tcp, enabled: "{{ nextcloud_enabled }}", comment: nextcloud-aio-admin}
+  - {port: 80,   proto: tcp, enabled: "{{ nextcloud_enabled and not nextcloud_behind_proxy }}", comment: nextcloud-aio}
+  - {port: 443,  proto: tcp, enabled: "{{ nextcloud_enabled and not nextcloud_behind_proxy }}", comment: nextcloud-aio}
+  - {port: 8443, proto: tcp, enabled: "{{ nextcloud_enabled and not nextcloud_behind_proxy }}", comment: nextcloud-aio}
+  - {port: 3478, proto: tcp, enabled: "{{ nextcloud_enabled }}", comment: nextcloud-talk}
+  - {port: 3478, proto: udp, enabled: "{{ nextcloud_enabled }}", comment: nextcloud-talk}

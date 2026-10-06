@@ -1,0 +1,26 @@
+---
+- name: "Stack dir: {{ stack_name }}"
+  ansible.builtin.file:
+    path: "/opt/stacks/{{ stack_name }}"
+    state: directory
+    mode: "0755"
+
+- name: "Compose file: {{ stack_name }}"
+  ansible.builtin.template:
+    src: "{{ stack_name }}.compose.yaml.j2"
+    dest: "/opt/stacks/{{ stack_name }}/compose.yaml"
+    mode: "0644"
+
+- name: "Env file: {{ stack_name }}"
+  ansible.builtin.template:
+    src: "{{ stack_name }}.env.j2"
+    dest: "/opt/stacks/{{ stack_name }}/.env"
+    mode: "0600"
+  no_log: true
+  when: stack_name == 'frigate'
+
+- name: "Start stack: {{ stack_name }}"
+  community.docker.docker_compose_v2:
+    project_src: "/opt/stacks/{{ stack_name }}"
+    state: present
+    pull: missing

@@ -1,0 +1,40 @@
+---
+# daemon.json is written BEFORE the package is installed so Docker's first start
+# already uses the zfs driver (no stray overlay2 data in /var/lib/docker).
+- name: Create /etc/docker
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: "0755"
+
+- name: Configure Docker daemon
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  notify: Restart docker
+
+- name: Install Docker from the Ubuntu archive
+  ansible.builtin.apt:
+    name: [docker.io, docker-compose-v2]
+    state: present
+
+- name: Enable Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Apply pending Docker restart
+  ansible.builtin.meta: flush_handlers
+
+- name: Add admin user to docker group
+  ansible.builtin.user:
+    name: "{{ homelab_admin_user }}"
+    groups: docker
+    append: true
+  failed_when: false
+
+- name: Create shared Docker network
+  community.docker.docker_network:
+    name: "{{ homelab_docker_network }}"

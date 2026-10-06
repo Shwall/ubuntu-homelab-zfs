@@ -1,0 +1,30 @@
+# Managed by Ansible - based on the official Nextcloud AIO compose example
+services:
+  nextcloud-aio-mastercontainer:
+    image: {{ nextcloud_image }}
+    init: true
+    restart: always
+    container_name: nextcloud-aio-mastercontainer   # must not be changed
+    network_mode: bridge
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config   # must not be changed
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8080:8080"
+{% if not nextcloud_behind_proxy %}
+      - "80:80"
+      - "8443:8443"
+{% endif %}
+    environment:
+      NEXTCLOUD_DATADIR: {{ homelab_root }}/nextcloud-data
+      NEXTCLOUD_UPLOAD_LIMIT: {{ nextcloud_upload_limit }}
+      NEXTCLOUD_MEMORY_LIMIT: {{ nextcloud_memory_limit }}
+      TZ: {{ homelab_timezone }}
+{% if nextcloud_behind_proxy %}
+      APACHE_PORT: {{ nextcloud_apache_port }}
+      APACHE_IP_BINDING: 0.0.0.0
+{% endif %}
+
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer

@@ -1,0 +1,21 @@
+---
+- name: Frigate config/media directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ homelab_root }}/frigate-config"
+    - "{{ homelab_root }}/frigate-media"
+
+- name: Frigate config.yml
+  ansible.builtin.template:
+    src: frigate-config.yml.j2
+    dest: "{{ homelab_root }}/frigate-config/config.yml"
+    mode: "0644"
+    force: "{{ frigate_config_overwrite }}"
+
+- name: Deploy Frigate stack
+  ansible.builtin.include_tasks: _stack.yml
+  vars:
+    stack_name: frigate

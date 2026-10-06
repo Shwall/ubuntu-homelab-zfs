@@ -1,0 +1,5 @@
+autoinstall/seed.iso
+autoinstall/user-data.local
+inventory/hosts.yml
+.vault_pass
+*.retry
