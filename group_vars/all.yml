@@ -6,7 +6,7 @@ homelab_timezone: Etc/UTC
 homelab_gpu: intel            # intel | none
 homelab_zfs_arc_max_gb: 4     # 0 = leave OpenZFS default (50% of RAM)
 
-frigate_detector: openvino    # openvino | edgetpu | cpu
+frigate_detector: cpu         # openvino | edgetpu | cpu
 frigate_cameras:
   - name: example_cam
     url: "rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.50:554/stream1"

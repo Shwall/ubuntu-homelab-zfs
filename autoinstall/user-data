@@ -14,13 +14,14 @@ autoinstall:
     hostname: homelab
     username: ansible
     # mkpasswd -m sha-512   (package: whois)
-    password: "$6$REPLACE_ME"
+    password: "$6$wOnf67eoJAyWQg8N$sYcTrugA0qifIuxUaRw6CQ4vju0JmHauSvdYOqcYvSbxSo6O5hZHCdvrcoMGuGtLdkA8msfBvDqjexa5QmrrK/"
+
 
   ssh:
     install-server: true
     allow-pw: false
     authorized-keys:
-      - ssh-ed25519 AAAAREPLACE_ME you@laptop
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDbuLqHSZBiEwKcJmndcj0iDc4I58I2Q12TBHg7X7LgC+o75EB4DqweotlBSFCtGDqZ5z8yJMlEwkssS0Mp57CETIEe2JCPkqjCFKZk4uP13SVtaoaP6mFu93qbGYORBMLPHJkXRTj5oHiUxl6VufVyookqMcpXb6pAeRgsznkZ+FO9ksqD1YdXd6GdaulMm6kUI1wUrRZ3rL1tDtSzQHZBlFWnY+3wcpzFqIAGwcOKxONrkeff9Kf+MuEJryncuyRtiE1rBATNINENnI3vJvSUSiAeUGPPz20k3jtfKNFoUJruN1J3Hl3nx1UhBzreghF0tv98OGaxgwVvqBLxDOlaEI94sCd1KNDeIOKznM2iq6Qy5wqMLhaKUuQaEhiII74vYquXRAVctXCYfKyQzTs2nr84rTZsJQYgCaMzabz6y43rCwXcr3qcknKGtbBWQdolKtJQqBgZ/O/IErv3KcY3ftQgc2q7SVyX6v6L0JwLK6weeTttVmacqrBdFKO70IwTMdJNb0QYOkQvi2SedkQ2AHE6bQ2TP3XHQnNB8HI+PEkmX0pA3UQBVRb6uzqvU/3XupvslGD+R4tlozfJwDhQ++ZtvbDQ5Wl5UNQJdr6pD85K6tJTkfX/ym1yP1s1X8u3vqJoGbIOfZLOv4Sdy/jjcgy56dGnct8DznyOz6++Rw== shwall@comcast.net
 
   # DHCP on all NICs is the default. For a static address use netplan syntax:
   # network:
@@ -38,7 +39,7 @@ autoinstall:
     layout:
       name: zfs
       match:
-        serial: "REPLACE_ME*"      # or: path: /dev/nvme0n1  |  size: smallest
+        serial: "PND33262417310100087"      # or: path: /dev/nvme0n1  |  size: smallest
   # Mirrored boot pool / custom vdevs are not offered by `layout`; use a full
   # custom `storage: config:` (zpool/zfs actions) if you need that.
 
@@ -72,7 +73,7 @@ autoinstall:
         content: |
           #!/usr/bin/env bash
           set -euo pipefail
-          REPO_URL="https://github.com/YOUR_USER/ubuntu-homelab-zfs.git"
+          REPO_URL="github.com:Shwall/ubuntu-homelab-zfs.git"
           BRANCH="main"
           DIR=/var/lib/homelab/repo
           mkdir -p /var/lib/homelab
