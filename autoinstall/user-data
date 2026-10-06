@@ -42,7 +42,7 @@ autoinstall:
         # serial: "PND33262417310100087" # This failed due to the s/n reportd being very different than on the sticker
         # or: path: /dev/nvme0n1  |  size: smallest
         ssd: true # match the first ssd since only the new drive is installed
-	size: largest
+        size: largest
   # Mirrored boot pool / custom vdevs are not offered by `layout`; use a full
   # custom `storage: config:` (zpool/zfs actions) if you need that.
 
@@ -58,7 +58,7 @@ autoinstall:
     - echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/90-ansible
     - chmod 440 /target/etc/sudoers.d/90-ansible
 
-  shutdown: reboot
+  shutdown: poweroff
 
   # cloud-init config for the *installed* system (runs on first boot)
   user-data:
