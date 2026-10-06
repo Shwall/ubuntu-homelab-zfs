@@ -17,14 +17,15 @@ autoinstall:
     password: "$6$wOnf67eoJAyWQg8N$sYcTrugA0qifIuxUaRw6CQ4vju0JmHauSvdYOqcYvSbxSo6O5hZHCdvrcoMGuGtLdkA8msfBvDqjexa5QmrrK/"
 
 
+  network:
+    version: 2
+    ethernets:
+      all-en:
+        match: {name: "en*"}
+        dhcp4: true
+        optional: true
+
   ssh:
-    network:
-      version: 2
-      ethernets:
-        all-en:
-          match: {name: "en*"}
-          dhcp4: true
-          optional: true
     install-server: true
     allow-pw: false
     authorized-keys:
